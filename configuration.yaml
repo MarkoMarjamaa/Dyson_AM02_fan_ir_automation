@@ -6,24 +6,32 @@ template:
       - name: "Dyson AM02 Actual Speed"
         unique_id: dyson_am02_actual_speed
         state: >
-          {% set power = states('sensor.dyson_switch_electric_consumption_w') | float(0) %}
+          {% set power = states('sensor.small_chargers_switch_electric_consumption_w') | float(0) %}
           {% if power < 2 %}
             0
-          {% elif power < 11.5 %}
+          {% elif power < 8.5 %}
             1
-          {% elif power < 16.5 %}
+          {% elif power < 12.3 %}
             2
-          {% elif power < 21.5 %}
+          {% elif power < 17.5 %}
             3
-          {% else %}
+          {% elif power < 24 %}
             4
+          {% elif power < 32 %}
+            5
+          {% elif power < 43 %}
+            6
+          {% elif power < 56 %}
+            7
+          {% else %}
+            8
           {% endif %}
 
 input_number:
   dyson_am02_target_speed:
     name: Dyson AMA2 target speed
     min: 0
-    max: 4
+    max: 8
     step: 1
 
 automation:
