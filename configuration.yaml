@@ -1,0 +1,87 @@
+shell_command:
+    dyson_am02: '/home/pi/Dyson/DysonSend.sh {{ dyson_command }}'
+
+template:
+  - sensor:
+      - name: "Dyson AM02 Actual Speed"
+        unique_id: dyson_am02_actual_speed
+        state: >
+          {% set power = states('sensor.dyson_switch_electric_consumption_w') | float(0) %}
+          {% if power < 2 %}
+            0
+          {% elif power < 11.5 %}
+            1
+          {% elif power < 16.5 %}
+            2
+          {% elif power < 21.5 %}
+            3
+          {% else %}
+            4
+          {% endif %}
+
+input_number:
+  dyson_am02_target_speed:
+    name: Dyson AMA2 target speed
+    min: 0
+    max: 4
+    step: 1
+
+automation:
+  - alias: Change Dyson AM02 state start_stop
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.dyson_am02_actual_speed
+      - platform: state
+        entity_id: input_number.dyson_am02_target_speed
+    condition:
+      - condition: template
+        value_template: >
+          {% set actual = states('sensor.dyson_am02_actual_speed') | int(0) %}
+          {% set target = states('input_number.dyson_am02_target_speed') | int(0) %}
+          {{ (actual == 0 and target != 0) or (actual != 0 and target == 0) }}
+    action:
+      - service: shell_command.dyson_am02
+        data:
+          dyson_command: START_STOP
+          
+  - alias: Change Dyson AM02 state up down
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: sensor.dyson_am02_actual_speed
+      - platform: state
+        entity_id: input_number.dyson_am02_target_speed
+    condition:
+      - condition: template
+        value_template: >
+          {% set actual = states('sensor.dyson_am02_actual_speed') | int(0) %}
+          {% set target = states('input_number.dyson_am02_target_speed') | int(0) %}
+          {{ actual != 0 and target != 0 and actual != target }}
+    action:
+      - repeat:
+          while:
+            - condition: template
+              value_template: >
+                {% set actual = states('sensor.dyson_am02_actual_speed') | int(0) %}
+                {% set target = states('input_number.dyson_am02_target_speed') | int(0) %}
+                {{ actual != 0 and target != 0 and actual != target and repeat.index <= 10 }}
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ states('sensor.dyson_am02_actual_speed') | int(0)
+                           > states('input_number.dyson_am02_target_speed') | int(0) }}
+                  sequence:
+                    - service: shell_command.dyson_am02
+                      data:
+                        dyson_command: SPEED_DOWN
+
+              default:
+                - service: shell_command.dyson_am02
+                  data:
+                    dyson_command: SPEED_UP
+
+            - delay:
+                seconds: 10
