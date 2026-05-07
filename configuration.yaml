@@ -1,6 +1,49 @@
 shell_command:
     dyson_am02: '/home/pi/Dyson/DysonSend.sh {{ dyson_command }}'
 
+fan:
+  - platform: template
+    fans:
+      living_room_fan:
+        friendly_name: "Living Room Fan"
+        unique_id: living_room_fan
+
+        # Fan is considered on when actual speed is above 0
+        value_template: >
+          {{ states('sensor.dyson_am02_actual_speed') | int(0) > 0 }}
+
+        # Convert actual Dyson speed 0–8 to Home Assistant percentage 0–100
+        percentage_template: >
+          {{ ((states('sensor.dyson_am02_actual_speed') | int(0)) / 8 * 100) | round(0) }}
+
+        # Tell Home Assistant this fan has 8 discrete speeds
+        speed_count: 8
+
+        turn_on:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.dyson_am02_target_speed
+            data:
+              value: 1
+
+        turn_off:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.dyson_am02_target_speed
+            data:
+              value: 0
+
+        # Convert Home Assistant percentage back to Dyson speed 0–8
+        set_percentage:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.dyson_am02_target_speed
+            data:
+              value: >
+                {{ (percentage | int(0) / 100 * 8) | round(0) }}
+
+
+
 template:
   - sensor:
       - name: "Dyson AM02 Actual Speed"
